@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Native HA - Authentication</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+
+        .icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .status {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .status.success {
+            color: #10b981;
+        }
+
+        .status.error {
+            color: #ef4444;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            margin-top: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .info {
+            background: #f3f4f6;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #666;
+            text-align: left;
+        }
+
+        code {
+            background: #e5e7eb;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">🏠</div>
+        <h1>Native HA</h1>
+        <p class="status" id="status">Authenticating...</p>
+        <div class="loading" id="loading"></div>
+        <div id="content"></div>
+    </div>
+
+    <script>
+        // Parse URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const state = urlParams.get('state');
+        const error = urlParams.get('error');
+        const errorDescription = urlParams.get('error_description');
+
+        const statusEl = document.getElementById('status');
+        const loadingEl = document.getElementById('loading');
+        const contentEl = document.getElementById('content');
+
+        // Function to show success
+        function showSuccess() {
+            loadingEl.style.display = 'none';
+            statusEl.textContent = '✓ Authentication Successful!';
+            statusEl.classList.add('success');
+            contentEl.innerHTML = `
+                <div class="info">
+                    <p><strong>Opening app...</strong></p>
+                    <p style="margin-top: 10px;">If the app doesn't open automatically, please tap the button below.</p>
+                </div>
+                <a href="dev.sems.native-ha://auth-callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}" class="button">
+                    Open Native HA App
+                </a>
+            `;
+        }
+
+        // Function to show error
+        function showError(message) {
+            loadingEl.style.display = 'none';
+            statusEl.textContent = '✗ Authentication Failed';
+            statusEl.classList.add('error');
+            contentEl.innerHTML = `
+                <div class="info">
+                    <p><strong>Error:</strong> ${message}</p>
+                </div>
+                <a href="dev.sems.native-ha://auth-callback?error=${encodeURIComponent(error || 'unknown')}" class="button">
+                    Return to App
+                </a>
+            `;
+        }
+
+        // Main logic
+        if (error) {
+            showError(errorDescription || error);
+        } else if (code && state) {
+            showSuccess();
+            
+            // Automatically redirect to app after a short delay
+            setTimeout(() => {
+                window.location.href = `dev.sems.native-ha://auth-callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
+            }, 1000);
+        } else {
+            showError('Missing authorization code or state parameter. Please try again from the app.');
+        }
+
+        // Handle case where user returns from failed deep link
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                // Page was loaded from cache, user might have returned
+                if (code && state) {
+                    contentEl.innerHTML = `
+                        <div class="info">
+                            <p><strong>Tip:</strong> If you haven't installed the Native HA app yet, please install it first.</p>
+                        </div>
+                        <a href="dev.sems.native-ha://auth-callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}" class="button">
+                            Try Opening App Again
+                        </a>
+                    `;
+                }
+            }
+        });
+    </script>
+</body>
+</html>

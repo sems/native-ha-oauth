@@ -1,0 +1,17 @@
+{
+  "name": "native-ha-oauth-callback",
+  "version": "1.0.0",
+  "description": "OAuth callback handler for Native HA iOS app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sems/native-ha-oauth.git"
+  },
+  "keywords": [
+    "home-assistant",
+    "oauth",
+    "ios",
+    "callback"
+  ],
+  "author": "sems",
+  "license": "MIT"
+}
